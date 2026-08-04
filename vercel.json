@@ -1,13 +1,20 @@
 {
     "version": 2,
-    "name": "voidlure-cookie-refresher",
     "builds": [
+        {
+            "src": "api/refresh.js",
+            "use": "@vercel/node"
+        },
         {
             "src": "index.html",
             "use": "@vercel/static"
         }
     ],
     "routes": [
+        {
+            "src": "/api/refresh",
+            "dest": "/api/refresh.js"
+        },
         {
             "src": "/(.*)",
             "dest": "/index.html"
