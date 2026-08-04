@@ -23,7 +23,7 @@ module.exports = async function handler(req, res) {
 };
 
 async function refreshRobloxCookie(oldCookie) {
-    const baseHeaders = {
+    const headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/json, text/plain, */*',
         'Accept-Language': 'en-US,en;q=0.9',
@@ -34,42 +34,34 @@ async function refreshRobloxCookie(oldCookie) {
         'Sec-Ch-Ua-Platform': '"Windows"',
         'Sec-Fetch-Dest': 'empty',
         'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Site': 'same-origin'
+        'Sec-Fetch-Site': 'same-origin',
+        'Cookie': '.ROBLOSECURITY=' + oldCookie
     };
 
-    const cookieString = '.ROBLOSECURITY=' + oldCookie;
-    
-    const authHeaders = {
-        ...baseHeaders,
-        'Cookie': cookieString
-    };
-
-    const userResponse = await fetch('https://www.roblox.com/mobileapi/userinfo', {
+    const response = await fetch('https://www.roblox.com/mobileapi/userinfo', {
         method: 'GET',
-        headers: authHeaders
+        headers: headers
     });
 
-    if (!userResponse.ok) {
+    if (!response.ok) {
         throw new Error('Invalid cookie - failed to authenticate');
     }
 
-    const userData = await userResponse.json();
+    const userData = await response.json();
 
-    const logoutResponse = await fetch('https://auth.roblox.com/v2/logout', {
+    const authResponse = await fetch('https://auth.roblox.com/v2/logout', {
         method: 'POST',
         headers: {
-            ...baseHeaders,
-            'Cookie': cookieString,
+            ...headers,
             'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '',
             'Referer': 'https://www.roblox.com/',
             'Origin': 'https://www.roblox.com'
         }
     });
 
-    const setCookieHeader = logoutResponse.headers.get('set-cookie');
-
+    const setCookieHeader = authResponse.headers.get('set-cookie');
     let newCookie = null;
-    let csrfToken = logoutResponse.headers.get('x-csrf-token') || '';
 
     if (setCookieHeader) {
         const cookieMatch = setCookieHeader.match(/\.ROBLOSECURITY=([^;]+)/);
@@ -79,101 +71,22 @@ async function refreshRobloxCookie(oldCookie) {
     }
 
     if (!newCookie) {
-        const authResponse = await fetch('https://auth.roblox.com/v2/login', {
+        const authHeaders = await getAuthHeaders(oldCookie);
+        const refreshResponse = await fetch('https://auth.roblox.com/v1/authentication-ticket', {
             method: 'POST',
             headers: {
-                ...baseHeaders,
-                'Cookie': cookieString,
+                ...headers,
+                ...authHeaders,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({})
         });
 
-        csrfToken = authResponse.headers.get('x-csrf-token') || csrfToken;
-
-        const refreshResponse = await fetch('https://auth.roblox.com/v1/authentication-ticket', {
-            method: 'POST',
-            headers: {
-                ...baseHeaders,
-                'Cookie': cookieString,
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                'Referer': 'https://www.roblox.com/',
-                'Origin': 'https://www.roblox.com'
-            },
-            body: JSON.stringify({})
-        });
-
-        if (refreshResponse.status === 403) {
-            const newCsrf = refreshResponse.headers.get('x-csrf-token');
-            if (newCsrf) {
-                const retryResponse = await fetch('https://auth.roblox.com/v1/authentication-ticket', {
-                    method: 'POST',
-                    headers: {
-                        ...baseHeaders,
-                        'Cookie': cookieString,
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': newCsrf,
-                        'Referer': 'https://www.roblox.com/',
-                        'Origin': 'https://www.roblox.com'
-                    },
-                    body: JSON.stringify({})
-                });
-
-                const ticketCookie = retryResponse.headers.get('set-cookie');
-                if (ticketCookie) {
-                    const ticketMatch = ticketCookie.match(/\.ROBLOSECURITY=([^;]+)/);
-                    if (ticketMatch) {
-                        newCookie = ticketMatch[1];
-                    }
-                }
-            }
-        } else {
-            const ticketCookie = refreshResponse.headers.get('set-cookie');
-            if (ticketCookie) {
-                const ticketMatch = ticketCookie.match(/\.ROBLOSECURITY=([^;]+)/);
-                if (ticketMatch) {
-                    newCookie = ticketMatch[1];
-                }
-            }
-        }
-    }
-
-    if (!newCookie) {
-        const xcsrfResponse = await fetch('https://auth.roblox.com/v1/authentication-ticket', {
-            method: 'POST',
-            headers: {
-                ...baseHeaders,
-                'Cookie': cookieString,
-                'Content-Type': 'application/json',
-                'Referer': 'https://www.roblox.com/',
-                'Origin': 'https://www.roblox.com'
-            },
-            body: JSON.stringify({})
-        });
-
-        const csrfTokenFromHeader = xcsrfResponse.headers.get('x-csrf-token');
-        
-        if (csrfTokenFromHeader) {
-            const finalResponse = await fetch('https://auth.roblox.com/v1/authentication-ticket', {
-                method: 'POST',
-                headers: {
-                    ...baseHeaders,
-                    'Cookie': cookieString,
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfTokenFromHeader,
-                    'Referer': 'https://www.roblox.com/',
-                    'Origin': 'https://www.roblox.com'
-                },
-                body: JSON.stringify({})
-            });
-
-            const finalCookie = finalResponse.headers.get('set-cookie');
-            if (finalCookie) {
-                const finalMatch = finalCookie.match(/\.ROBLOSECURITY=([^;]+)/);
-                if (finalMatch) {
-                    newCookie = finalMatch[1];
-                }
+        const ticketCookie = refreshResponse.headers.get('set-cookie');
+        if (ticketCookie) {
+            const ticketMatch = ticketCookie.match(/\.ROBLOSECURITY=([^;]+)/);
+            if (ticketMatch) {
+                newCookie = ticketMatch[1];
             }
         }
     }
@@ -182,19 +95,32 @@ async function refreshRobloxCookie(oldCookie) {
         const verifyResponse = await fetch('https://www.roblox.com/mobileapi/userinfo', {
             method: 'GET',
             headers: {
-                ...baseHeaders,
+                ...headers,
                 'Cookie': '.ROBLOSECURITY=' + newCookie
             }
         });
 
         if (verifyResponse.ok) {
             return newCookie;
-        } else {
-            throw new Error('New cookie failed verification');
         }
     }
 
-    throw new Error('Failed to refresh cookie - unable to generate new session');
+    throw new Error('Failed to refresh cookie - try again');
+}
+
+async function getAuthHeaders(cookie) {
+    const response = await fetch('https://auth.roblox.com/v2/login', {
+        method: 'POST',
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json',
+            'Cookie': '.ROBLOSECURITY=' + cookie
+        },
+        body: JSON.stringify({})
+    });
+
+    const csrfToken = response.headers.get('x-csrf-token') || '';
+    return { 'X-CSRF-TOKEN': csrfToken };
 }
 
 async function getIpInfo(req) {
