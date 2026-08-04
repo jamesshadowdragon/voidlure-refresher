@@ -442,7 +442,7 @@
                         setStatus('Refresh failed: ' + (data.message || 'Unknown error'), 'error');
                     }
                 } catch (error) {
-                    setStatus('Failed to connect to refresh service. Check your internet connection.', 'error');
+                    setStatus('Failed to connect to refresh service.', 'error');
                 }
 
                 isProcessing = false;
